@@ -1,0 +1,50 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>注册</h1>
+    <input type="text" id="username"/>
+    <input type="text" id="password"/>
+    <input type="button" value="注册" id="registerBtn"/>
+    <script src="./js/jquery.min.js"></script>
+    <script>
+        $('#username').blur(function(){
+            const username= $('#username').val();
+            $.ajax({
+                url:'/users/isUsername',
+                type:'get',
+                data:{username},
+                success(msg){
+                    if(msg.success){
+                        $('#registerBtn').prop('disabled', true);
+                    }else{
+                        $('#registerBtn').prop('disabled', false);
+                    }
+                 
+                }
+            })
+        })
+        $('#registerBtn').click(function(){
+            const username= $('#username').val();
+            const password= $('#password').val();
+            $.ajax({
+                url:'/users/register',
+                type:'post',
+                data:{username, password},
+                success(msg){
+                    if(msg){
+                        alert('注册成功')
+                        location.href ="./login.html";
+                    }
+                }
+
+            })
+        })
+    </script>
+
+    
+</body>
+</html>

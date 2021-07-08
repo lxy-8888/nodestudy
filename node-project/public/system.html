@@ -1,0 +1,448 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #imagesBox{
+            width: 100px;
+            height: 100px;
+          
+        }
+        #imagesBox img{
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h3>新增班级</h3>
+    <div>
+        <div>
+            <label>班级名称：</label>
+            <input type="text" id="addclassName"/>
+        </div>
+        <div>
+            <label>主管老师：</label>
+            <select id="xzteacher"></select>
+        </div>
+        <button id="addclassBtn">确认新增</button>
+    </div>
+
+    <h3>新增学生</h3>
+    <div>
+        <div>
+            <label>学生姓名：</label>
+            <input type="text" id="addName"></input>
+        </div>
+        <div>
+            <label>学生年龄：</label>
+            <input type="text" id="addAge"></input>
+        </div>
+        <div>
+            <label>学生性别：</label>
+            <input type="radio" value="男" name="addGender">男</input>
+            <input type="radio" value="女" name="addGender">女</input>
+        </div>
+        <div>
+            <label>所属班级</label>
+            <select id="inclass">
+            </select>
+        </div>
+        <label>上传头像：</label>
+        <input type="file" id="chooseImages" multiple/>
+        <div>
+            <button id= "addBtn">确认新增</button>
+        </div>
+        <div id="imagesBox"></div>
+       
+            
+
+    </div>
+    <h3>修改学生</h3>
+    <div>
+        <input type="hidden" id="upid">
+        <div>
+            <label>学生姓名</label>
+            <input type="text" id="upname"/>
+        </div>
+        <div>
+            <label>学生年龄</label>
+            <input type="text" id="upage"/>
+        </div>
+        <div>
+            <label>学生性别</label>
+            <input type="radio" value="男"  name="upgender">男</input>
+            <input type="radio" value="女"  name="upgender">女</input>
+        </div>
+        <div>
+            <button id='upBtn'>确认修改</button>
+        </div>
+
+    </div>
+    <h3>学生列表</h3>
+    <select id="searchType">
+        <option value="name">姓名</option>
+        <option value="age">年龄</option>
+        <option value="gender">性别</option>
+    </select>
+    <input type="text" id="searchValue"/>
+    <button id="searchBtn">搜索</button>
+    <table>
+        <thead>
+            <tr>
+                <th>学生编号</th>
+                <th>学生姓名</th>
+                <th>学生年龄</th>
+                <th>学生性别</th>
+                
+                <th>所属班级</th>
+                <th>所属老师</th>
+                <th>学生操作</th>
+                <th>学生头像</th>
+            
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <div>
+        <button id="shouye">首页</button>
+        <button id="shangye">上一页</button>
+        <button id="xiaye">下一页</button>
+        <button id="weiye">尾页</button>
+        <span>每页显示条数</span>
+        <select id="pagesize">
+            <option>2</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+        </select>
+        <span> <b id="dangqianye"></b> </span> / <span><b id="totalpages"></b></span> 
+        <span> 总条数： </span> <b id="totals"></b> 
+     </div>
+    <h5>新增老师</h5>
+    <div>
+        <label>老师姓名:</label>
+        <input type="text" id="addtname"/>
+    </div>
+    <div>
+        <label>老师年龄:</label>
+        <input type="text" id="tage"/>
+    </div>
+       <button id="addtBtn">确认新增</button>
+
+
+    <script src="./js/jquery.min.js"></script>
+    <script>
+        
+        //分页数据
+       let pageData= {
+            pagesize:4,//每页显示条数
+            dangqianye:1,  //当前页
+            totals:[],//总条数
+            totalpages:[],  //总页数
+            rows:[]  //学生数据
+        }
+        //搜索条件
+        let searchData= {
+            type:'name',
+            value:''
+        }
+        //统一设置所有ajax请求头
+        $.ajaxSettings.beforeSend=function(xhr){
+            xhr.setRequestHeader('Authorization','Bearer '+localStorage.token)
+        }
+        islogins();
+        render();
+        getclass();
+        getteacher();
+
+    //进系统页面之前先判断用户是否登录
+        function islogins(){
+            $.ajax({
+            url:'/users/islogin',
+             type:'post',
+             headers:{
+                'Authorization':'Bearer '+localStorage.token
+            },
+             success(msg){
+                if(msg.success){
+                     console.log(msg.username)
+                 }
+             },
+             error(msg){
+                 if(msg.status == 401){
+                    location.href="./login.html"
+                 }
+
+             }
+
+
+            })
+        }
+        //上传头像
+        $('#chooseImages').change(function(event){
+         //   获取原生input file节点
+            const node =event.target;
+            //通过node 节点获取图片信息
+            const files = node.files;
+            //创建表单对象
+            const formData =new FormData();
+            //将图片信息放入表单对象中
+            for (let item of files){
+                formData.append('file',item);
+            }
+           
+            $.ajax({
+                url:'image/upload',
+                type:'post',
+                data:formData,
+                cache:false,
+                contentType:false,
+                processData:false,
+                success(msg){
+                    console.log(msg)
+                    if(msg.success){
+                        $('#imagesBox').html('');
+                        $('<img>').attr('src',`./temp/${msg.filename}`).attr('data-src',msg.filename).appendTo($('#imagesBox'));
+                    }
+                }
+            })
+
+                   })
+        $('#shouye').click(function(){
+            pageData.dangqianye=1;
+            render()
+        });
+        $('#shangye').click(function(){
+            if(pageData.dangqianye>1){
+                pageData.dangqianye--;
+                render()
+            }
+           
+        });
+        $('#xiaye').click(function(){
+            if(pageData.dangqianye< pageData.totalpages){
+                pageData.dangqianye++;
+                render();
+            }
+        });
+        $('#weiye').click(function(){
+            pageData.dangqianye=pageData.totalpages;
+            render();
+        });
+        $('#pagesize').change(function(){
+            pageData.dangqianye=1;
+           pageData.pagesize= $('#pagesize').val();
+           render();
+        });
+
+        function render(){
+            $.ajax({
+                url:'/students/getstudents',
+                type:'get',
+                data:{
+                    type: searchData.type,
+                    value: searchData.value,
+                    pagesize:pageData.pagesize,
+                    dangqianye:pageData.dangqianye
+                },
+                success(msg){   
+                    
+                   if(msg.success){
+                      
+                    pageData = msg.data;
+                 //   console.log(pageData.rows)  
+                     const newArr=pageData.rows.map(function(item,index){
+                             return `
+                             <tr>
+                                <td>${item._id}</td>
+                                <td>${item.name}</td>
+                                <td>${item.age}</td>
+                                <td>${item.gender}</td>
+                              
+                                <td>${item.classId.classname}</td>
+                                <td>${item.classId.teacherId.teachername}</td>
+                                <td>
+                                    <button class='removeBtn' data-id=${item._id}>删除</button>
+                                    <button class='upBtn' data-id=${item._id}>修改</button> 
+                                </td>
+                                <td>
+                                    ${
+                                        item.imageName?`<img width='50px' src="./images/${item.imageName}"/>`:'暂无图片'
+                                    }
+                                 <td/>
+                               
+
+                             </tr>
+                             `;   
+                         })
+                         const str = newArr.join('');
+                        $('tbody').html(str);
+                        $('#pagesize').val(pageData.pagesize);
+                        $('#dangqianye').html(pageData.dangqianye);
+                        $('#totalpages').html(pageData.totalpages);
+                        $('#totals').html(pageData.totals);
+
+                    }
+                }
+            })
+        };
+
+        //获取一个学生
+        $('tbody').on('click','.upBtn',function(){
+            const _id =$(this).data('id');
+           
+            $.ajax({
+                url:'/students/upgetStudents',
+                type:'get',
+                data:{_id},
+                success(msg){
+                  
+                    if(msg.success){
+                      const {_id,name,age,gender}=msg.rows[0];
+                        $('#upid').val(_id);
+                        $('#upname').val(name);
+                        $('#upage').val(age);
+                        $(`[name=upgender][value=${gender}]`).prop("checked",true);
+                    }
+                }
+            })
+        });
+
+        //确认修改
+        $('#upBtn').click(function(){
+           const _id=$('#upid').val();
+           const name=$('#upname').val();
+           const age=$('#upage').val();
+           const gender=$(`[name=upgender]:checked`).val();
+           $.ajax({
+               url:'/students/upConfirm',
+               data:{_id,name,age,gender},
+               type:'post',
+               success(msg){
+                   if(msg.success){
+                      render();
+                   }
+                   
+               }
+           })
+
+
+
+        });
+       
+        //删除
+        $('tbody').on('click','.removeBtn',function(){
+            const _id = $(this).data('id');
+            
+           $.ajax({
+            url:'/students/deleteStudentsById',
+            type:'post',
+            data: {_id},
+            success(msg){
+                if(msg.success){
+                    render();
+                };
+            }
+    
+           });
+        });
+
+        //新增学生
+        $("#addBtn").click(function(){
+            const name =$("#addName").val();
+            const age =$("#addAge").val();
+            const gender =$('[name=addGender]:checked').val();
+            const classId=$('#inclass').val();
+            const imageName=$('#imagesBox>img').attr('data-src');
+          //  console.log(classId);
+            $.ajax({
+                url:'/students/addStudents',
+                type:'post',
+                data:{name,age,gender,classId,imageName},
+            success(msg){
+                if(msg.success){
+                    console.log('新增学生成功')
+                    render();
+                };
+            }
+            })
+        });
+
+        //搜索
+        $("#searchBtn").click(function(){
+            searchData.type =$("#searchType").val();
+            searchData.value =$('#searchValue').val();
+            pageData.dangqianye=1
+            render();
+        });
+        //新增班级
+        $('#addclassBtn').click(function(){
+            const classname =$('#addclassName').val();
+            const teacherId=$('#xzteacher').val();
+       
+            $.ajax({
+                url:'/class/addClass',
+                data:{classname,teacherId},
+                type:'post',
+                success(msg){
+                  if(msg.success){
+                
+                    getclass();
+                    getteacher();
+                    console.log("新增班级成功")
+                  }
+                }
+           })
+        });
+        // 获取所有班级
+         function getclass(){
+             $.ajax({
+                 url:'/class/getClass',
+                 type:'get',
+                 success(msg){
+                    if(msg.success){
+                        
+                  const str= msg.rows.map(item => `<option value="${item._id}">${item.classname}</option>`).join('');
+                     $('#inclass').html(str);
+                     
+                    }
+                 }
+             })
+         }
+       
+         //新增老师
+         $('#addtBtn').click(function(){
+            const teachername = $('#addtname').val();
+            const teacherage = $('#tage').val();
+            $.ajax({
+                url:'/teacher/addTeacher',
+                type:'post',
+                data:{teachername,teacherage},
+                success(msg){
+                    if(msg.success){
+                        console.log("新增老师成功");
+                    }
+                }
+            })
+         })
+         //获取所有老师
+         function getteacher(){
+             $.ajax({
+                 url:'/teacher/getTeacher',
+                 type:'get',
+                 success(msg){
+                     if(msg.success){
+                        const str= msg.rows.map(item => `<option value="${item._id}">${item.teachername}</option>`).join('');
+                     $('#xzteacher').html(str);
+                     }
+                 }
+             })
+             
+
+         }
+    </script>
+</body>
+</html>
